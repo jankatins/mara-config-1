@@ -1,11 +1,11 @@
 """Infrastructure to add and consume functionality"""
 import collections
 import copy
+import itertools
 import logging
 import sys
 import types
 import typing
-import itertools
 
 __all__ = ['register_functionality', 'register_functionality_in_all_imported_modules',
            'get_contributed_functionality', 'call_app_composing_function']
@@ -14,16 +14,21 @@ log = logging.getLogger(__name__)
 
 # The main API functionality
 _registered_functionality: {str: list} = collections.defaultdict(list)
+_registered_modules: [str] = []
 
 
 def register_functionality(module: types.ModuleType):
     """Registers all declared functionality"""
+    if module.__name__ in _registered_modules:
+        # already registered
+        return
     for attr in dir(module):
         if attr.startswith('MARA_'):
             items = getattr(module, attr)
             assert (callable(items) or isinstance(items, typing.Iterable))
             log.debug("Registered '%s' in module '%s'", attr, module.__name__)
             _registered_functionality[attr].append((module, items))
+            _registered_modules.append(module.__name__)
 
 
 def get_contributed_functionality(name: str) -> typing.Iterable:
