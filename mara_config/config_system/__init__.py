@@ -285,7 +285,10 @@ def add_config_from_environment():
                     # we treat it as a string
                     pass
             loaded = True
-            set_config(config_name, False, lambda: value)
+            # This needs to bound the value inside the lambda, otherwise the value will get from the outer
+            # scope and in that case value will be the last processed environment variable
+            # https://stackoverflow.com/a/19837683/1380673
+            set_config(config_name, False, lambda bound_value=value: bound_value)
     if loaded:
         log.debug("Loaded some config from environment")
 
