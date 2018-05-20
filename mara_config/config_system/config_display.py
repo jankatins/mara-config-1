@@ -14,7 +14,7 @@ class ConfigFunction():
     """A object which holds information about a config function"""
 
     def __init__(self, name):
-        self.func_name = name
+        self.config_name = name
         self.set_func = None
         self.declared_func = None
         self.include_parent = False
@@ -26,6 +26,7 @@ class ConfigFunction():
         sig = inspect.signature(self._value_func)
         self._signature = sig
         self.argument_length = len(sig.parameters)
+        self.func_name = self._value_func.__name__
         self.module_name = self._value_func.__module__
         try:
             self.value = self._value_func()
