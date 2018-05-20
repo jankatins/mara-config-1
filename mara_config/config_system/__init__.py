@@ -285,15 +285,36 @@ def add_config_from_environment():
                     # we treat it as a string
                     pass
             loaded = True
-            set_config(config_name, False, lambda: value)
+            # This needs to bound the value inside the lambda, otherwise the value will get from the outer
+            # scope and in that case value will be the last processed environment variable
+            # https://stackoverflow.com/a/19837683/1380673
+            set_config(config_name, False, lambda bound_value=value: bound_value)
     if loaded:
         log.debug("Loaded some config from environment")
+
+def prepare_import():
+    """Try to find the best folder to add to the search path
+    """
+    path = os.getcwd()
+    path = os.path.realpath(path)
+
+    if os.path.exists(os.path.join(path, '__init__.py')):
+        # move up until outside package structure (no __init__.py)
+        while True:
+            path, name = os.path.split(path)
+
+            if not os.path.exists(os.path.join(path, '__init__.py')):
+                break
+
+    if sys.path[0] != path:
+        sys.path.insert(0, path)
 
 
 def add_config_from_local_setup_py():
     # apply environment specific settings (not in git repo)
     import importlib
     from ..config import default_app_module
+    prepare_import()
     parts = default_app_module().split('.')
     while parts:
         try:

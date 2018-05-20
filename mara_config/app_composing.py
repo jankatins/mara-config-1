@@ -67,7 +67,9 @@ def call_app_composing_function():
     """
     import importlib
     from .config import default_app_module
+    from .config_system import prepare_import
     app_module_name = default_app_module()
+    prepare_import()
     try:
         app = importlib.import_module(app_module_name)
     except ModuleNotFoundError:
