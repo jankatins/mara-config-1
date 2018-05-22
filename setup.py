@@ -6,7 +6,7 @@ def get_long_description():
 
 setup(
     name='mara-config',
-    version='0.1',
+    version='0.1.1',
 
     description="Mara app composing and configuration infrastructure.",
     long_description=get_long_description(),
