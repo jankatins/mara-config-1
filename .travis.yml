@@ -1,0 +1,25 @@
+language: python
+matrix:
+  include:
+    - python: "3.6"
+      env: UPLOAD=True
+    - python: "3.6-dev"
+    - python: "3.7-dev"
+
+install:
+    - pip install .[test] --process-dependency-links
+
+script: pytest
+
+deploy:
+  provider: pypi
+  distributions: sdist
+  user: mara-pypi-upload-account
+  password:
+    secure: "PkfHkzx6EZ5K8pKgGyeFlDzshUnnyQFgpfk1wA1tuIVZzNrDD9/Fs2LtdE35K1mj9Ki+OTKNkAX5+QJjWmbk3Vq2CvzhlWYG75XYfDbnx7c/u1mfz/uicxW+ixigadlDZ674JJnL9f5/lPEzHa6ctV+7YrteSjsABl9EUs7evHgSHg/aq+LlBLyKDXtTkrj7iPxG2N+HNgiqM4ETgRzpcm29Dqv14zbuHXxlEybOauhe1ylPG60FWTLCzcOMzCvBC1Q9kG/coQUt/M1QZNnN/6BRBcxd16lIjJ4xkR4TdtC2pcY5vB4zOYTPKBG3r8oPbABBkqj5BVV+br7StT72PZut1hVeuDpkSL8k21t5kLM67hdh9FrtAUxP1UR+BgzMoCYwgyeoXD8x1fZZF/S/kbiBXKVssVCsmgzsfjdaLt9W/PTJa0bKGdPbSUfrIXndrMhKOqK/haVENs9Y4ldy9xSLc08zbRtmd4r0eJoDrpYXuVGeAD69VPhrdvPN5X++yDuX5zyImqF2lZvlGN/6Pnh8rXLSPAUPaYoxwKxQRKMSqcDcFRmHHsvYxFX64IWn35OFPHl6EKwXziTCHLm/IWJzlt27mWBAxoZ9nFo6SrncBtma/uq6Yy0wfMTKGrEsRh2YQOz+hxpGO0RQezcWexRVa9mIDukD72MdeHkLZ9E="
+  on:
+    tags: true
+    branch: master
+    repo: mara/mara-config
+    condition: $UPLOAD == True
+
