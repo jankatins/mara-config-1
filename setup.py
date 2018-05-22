@@ -14,6 +14,7 @@ setup(
     },
 
     dependency_links=[
+        'git+https://github.com/mara/mara-page.git@1.2.3#egg=mara-page-1.2.3',
     ],
 
     packages=find_packages(),
