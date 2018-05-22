@@ -1,10 +1,17 @@
 from setuptools import setup, find_packages
 
+def get_long_description():
+    with open('README.md') as f:
+        return f.read()
+
 setup(
     name='mara-config',
     version='0.1',
 
     description="Mara app composing and configuration infrastructure.",
+    long_description=get_long_description(),
+    long_description_content_type='text/markdown',
+
 
 
     extras_require={
