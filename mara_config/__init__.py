@@ -1,6 +1,6 @@
 """App composing and Configuration infrastructure"""
 from .config_system import declare_config, set_config
-from .app_composing import (call_app_composing_function,
+from .app_composing import (call_app_composing_function, init_mara_config_once,
                             register_functionality, get_contributed_functionality,
                             register_functionality_in_all_imported_modules)
 

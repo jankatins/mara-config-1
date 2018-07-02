@@ -57,6 +57,7 @@ def register_functionality_in_all_imported_modules():
     for name, module in copy.copy(sys.modules).items():
         register_functionality(module)
 
+__INITIALIZED = False
 
 def call_app_composing_function():
     """Finds and calls the app composing function
@@ -65,6 +66,7 @@ def call_app_composing_function():
     `default_app_module()` (default: app.app) and then call the
     `compose_mara_app()` function in that module, if it exists.
     """
+    global __INITIALIZED
     import importlib
     from .config import default_app_module
     from .config_system import prepare_import
@@ -87,4 +89,17 @@ def call_app_composing_function():
         msg = "Calling '%s.compose_mara_app()' resulted in an exception"
         raise RuntimeError(msg) from e
     log.debug("Finished '%s.compose_mara_app()'", app_module_name)
+    __INITIALIZED = True
     return
+
+
+
+def init_mara_config_once():
+    """Helper function to be used in one-off scripts which need the config system available"""
+    if __INITIALIZED:
+        return
+    from mara_config.config_system import add_config_from_environment, add_config_from_local_setup_py
+    add_config_from_local_setup_py()
+    add_config_from_environment()
+    from mara_config import call_app_composing_function
+    call_app_composing_function()
