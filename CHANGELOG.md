@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 (2018-07-03)
+## 0.1.3 (2018-07-03)
 - Add `init_mara_config_once()` for usage in one-off scripts
 
 ## 0.1.0 - 0.1.1 (2018-05-22)
