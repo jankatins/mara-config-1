@@ -15,10 +15,11 @@ def debug():
 def default_app_module():
     """The app module where the app composing functions are defined (Default: 'app.app')
 
-    The only way to set this before this is used is by setting an environment variable $MARA_APP.
+    The only way to set this, is by setting an environment variable $MARA_APP.
     """
-    # this is not replaceable in local_setup.py, only '@config' to get it show up in the flask view
-    # hack to already get the info before the config system is fully initialized
+    # this is not replaceable in local_setup.py, only by environment variables
+    # '@declare_config' is only used to get it show up in the config system
+    # This will eventually get replaced by the lambda from the add_config_from_environment(), but whatever...
     return os.environ.get('MARA_APP', 'app.app')
 
 @declare_config("default_environment_prefix")

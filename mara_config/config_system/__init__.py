@@ -292,29 +292,13 @@ def add_config_from_environment():
     if loaded:
         log.debug("Loaded some config from environment")
 
-def prepare_import():
-    """Try to find the best folder to add to the search path
-    """
-    path = os.getcwd()
-    path = os.path.realpath(path)
-
-    if os.path.exists(os.path.join(path, '__init__.py')):
-        # move up until outside package structure (no __init__.py)
-        while True:
-            path, name = os.path.split(path)
-
-            if not os.path.exists(os.path.join(path, '__init__.py')):
-                break
-
-    if sys.path[0] != path:
-        sys.path.insert(0, path)
-
 
 def add_config_from_local_setup_py():
     # apply environment specific settings (not in git repo)
+    # this assumes that the sys.path is set correctly,
+    # e.g. that mara_config.app_composing.ensure_app_module() was run
     import importlib
     from ..config import default_app_module
-    prepare_import()
     parts = default_app_module().split('.')
     while parts:
         try:
