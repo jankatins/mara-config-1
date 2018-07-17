@@ -21,6 +21,6 @@ def MARA_NAVIGATION_ENTRY_FNS():
     yield view.navigation_entry
 
 # And something to the config system itself
-def MARA_CONFIG():
+def MARA_CONFIG_MODULES():
     import mara_config.config
     yield mara_config.config

@@ -122,17 +122,17 @@ def replacement():
 * a Flask view to show the current configuration (`MARA_FLASK_BLUEPRINTS`)
 * an ACL ressource to protect access to the config view (`MARA_ACL_RESOURCES`)
 * a navigation entry (`MARA_NAVIGATION_ENTRY_FNS`)
-* Some default configuration entries (`MARA_CONFIG`)
+* Some default configuration entries (`MARA_CONFIG_MODULES`)
 
 To use, add this funcitonality, add `mara_config.register_functionality(mara_config)`
 to your `compose_mara_app()` function.
 
 ## Consumed MARA_* functionality
 
-The packge will load all modules which are declared in `MARA_CONFIG` if asked to show the
+The packge will load all modules which are declared in `MARA_CONFIG_MODULES` if asked to show the
 current configuration.
 
-`MARA_CONFIG` must be a `list/generator/function which returns a list` which
+`MARA_CONFIG_MODULES` must be a `list/generator/function which returns a list` which
 contains all modules which declare user facing configuration (`@declare_config()`). 
 When displaying the config (e.g. via `mara print_config` or the included flask view), 
 all modules will be loaded and all included `@declare_config()` decorated functions 

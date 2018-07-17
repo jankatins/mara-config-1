@@ -138,12 +138,12 @@ def get_config_for_display() -> ConfigForDisplay:
     The ConfigForDisplay contains ConfigModules which contain
     ConfigFunctions.
 
-    Will load all config modules contributed via `MARA_CONFIG`.
+    Will load all config modules contributed via `MARA_CONFIG_MODULES`.
     """
 
     config = ConfigForDisplay()
 
-    for module, config_module in get_contributed_functionality('MARA_CONFIG'):
+    for module, config_module in get_contributed_functionality('MARA_CONFIG_MODULES'):
         config.add_module(ConfigModule(config_module, contributed=True))
 
     for key, func in get_declared_config():
