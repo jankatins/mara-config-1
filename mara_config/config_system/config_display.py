@@ -4,12 +4,13 @@ import inspect
 import itertools
 import pprint
 import sys
-from typing import Iterable, Callable, Tuple
+from typing import Iterable, Tuple
 
 from mara_config import get_contributed_functionality
 
 from . import get_declared_config, get_overwritten_config
 
+_UNSET = object()
 
 class ConfigFunction():
     """A object which holds information about a config function"""
@@ -30,13 +31,52 @@ class ConfigFunction():
         self.argument_length = len(sig.parameters)
         self.func_name = self._value_func.__name__
         self.module_name = self._value_func.__module__
-        try:
-            self.value = self._value_func()
-            self.error = None
-        except Exception as e:
-            self.value = f"[Function returned Error]"
-            self.error = (str(e.__class__.__name__), str(e))
+        self.error = None
+        self.value = _UNSET
+
+        def _set_generic_exception_error(e):
+            self.error = f"ERROR while calling Function {self.func_desc}: {e.__class__.__name__}: {str(e)}"
+
+        def _set_needs_to_be_configured_error():
+            self.error = f"ERROR: Config '{self.config_name}' needs to be configured before usage."
+
+        def _set_function_as_value():
+            # In the end pprint will call repr(self) on it and that does the right thing here
+            self.value = self
+
+        # At this point we can aussume that we do not need to call _build_data again and indeed
+        # by using self.func_desc we would if this is not set
         self.__initialized = True
+
+        if self.needs_set and not self.set_func:
+            # this happens when we use the decoarator but the real functions returns something
+            _set_needs_to_be_configured_error()
+        else:
+            try:
+                self.value = self._value_func()
+            except NotImplementedError as e:
+                if not self.set_func:
+                    # not overwritten, but seems to be a function which
+                    # needs to be overwritten, so treat it accordingly
+                    self.needs_set = True
+                    _set_needs_to_be_configured_error()
+                else:
+                    # overwritten, but still failing -> error
+                    _set_generic_exception_error(e)
+            except TypeError as e:
+                if self.argument_length != 0:
+                    # expected because of missing arguments, so no error
+                    _set_function_as_value()
+                else:
+                    _set_generic_exception_error(e)
+            except RuntimeError as e:
+                if 'application context' in str(e):
+                    # needs a flask context, so expected and no error...
+                    _set_function_as_value()
+                else:
+                    _set_generic_exception_error(e)
+            except Exception as e:
+                _set_generic_exception_error(e)
 
     @property
     def _value_func(self):
@@ -88,16 +128,10 @@ class ConfigFunction():
         if not self.error:
             return pprint.pformat(self.value)
         else:
-            if self.argument_length == 0:
-                # for now we only report the exception type
-                error = f" ({self.error[0]})"
-            else:
-                # expected because of missing arguments, so no error
-                error = ""
-            return f"Function '{self.func_desc}'" + error
+            return self.error
 
     def __repr__(self):
-        return self.value_desc
+        return f"<function {self.func_desc}>"
 
 
 class ConfigModule():
@@ -200,7 +234,7 @@ def print_config():
     for module_name, config_module in config.items():
         # print(f'# Module: {module_name}')
         for conf_name, conf_func in config_module.items():
-            print(format_str % (conf_name, conf_func.state_desc, str(conf_func)))
+            print(format_str % (conf_name, conf_func.state_desc, str(conf_func.value_desc)))
 
     print('\nS: config is set, D: @declare_config was called, I: config value includes parent, ' +
           'N: config value needs to be set\n')
