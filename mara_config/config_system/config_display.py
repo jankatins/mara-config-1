@@ -4,13 +4,14 @@ import inspect
 import itertools
 import pprint
 import sys
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, List
 
 from mara_config import get_contributed_functionality
 
 from . import get_declared_config, get_overwritten_config
 
 _UNSET = object()
+
 
 class ConfigFunction():
     """A object which holds information about a config function"""
@@ -81,6 +82,11 @@ class ConfigFunction():
     @property
     def _value_func(self):
         return self.set_func or self.declared_func
+
+    @property
+    def validates(self):
+        self._build_data()
+        return self.error is None
 
     @property
     def doc(self):
@@ -238,3 +244,49 @@ def print_config():
 
     print('\nS: config is set, D: @declare_config was called, I: config value includes parent, ' +
           'N: config value needs to be set\n')
+
+
+def validate_config()  -> List[str]:
+    """Validates all config items if needed entries are set
+
+    Returns:
+        is_good: bool, whether or not the current config validates
+        validation_errors: list of strings of error messages per config item
+    """
+    config = get_config_for_display()
+    validation_errors = []
+    for module_name, config_module in config.items():
+        # print(f'# Module: {module_name}')
+        for conf_name, conf_func in config_module.items():
+            if not conf_func.validates:
+                if conf_func.needs_set and not conf_func.set_func:
+                    validation_errors.append(f"UNSET: {conf_name}")
+                else:
+                    validation_errors.append(f"ERROR: {conf_name} ({conf_func.error})")
+    return validation_errors
+
+
+def generate_local_setup() -> List[str]:
+    """Generates a local_setup.py content for all config items which need to be set
+
+    Returns:
+        code: list of strings with the suggested code
+    """
+    import inspect
+    import re
+    at_declare = re.compile(r'^@declare_config.*$', flags=re.MULTILINE)
+    config = get_config_for_display()
+    code = []
+    code.append('# generated, please adjust!\n')
+    code.append('from mara_config import set_config\n')
+
+    for module_name, config_module in config.items():
+        for conf_name, conf_func in config_module.items():
+            if conf_func.needs_set and not conf_func.set_func:
+                code.append(f"\n@set_config('{conf_func.config_name}')")
+                declared_body = inspect.getsource(conf_func.declared_func)
+                for line in declared_body.splitlines():
+                    # remove the @delcare(...) line completely
+                    if not at_declare.match(line):
+                        code.append(line)
+    return code
