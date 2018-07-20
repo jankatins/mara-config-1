@@ -4,6 +4,7 @@ import inspect
 import itertools
 import pprint
 import sys
+from typing import Iterable, Callable, Tuple
 
 from mara_config import get_contributed_functionality
 
@@ -18,6 +19,7 @@ class ConfigFunction():
         self.set_func = None
         self.declared_func = None
         self.include_parent = False
+        self.needs_set = False
         self.__initialized = False
 
     def _build_data(self):
@@ -42,8 +44,9 @@ class ConfigFunction():
 
     @property
     def doc(self):
-        doc = self._value_func.__doc__
-        if not doc and self.set_func:
+        """Documentations of the set function or the declared function (first wins)"""
+        doc = ''
+        if self.set_func:
             doc = self.set_func.__doc__
         if not doc and self.declared_func:
             doc = self.declared_func.__doc__
@@ -51,6 +54,7 @@ class ConfigFunction():
 
     @property
     def func_desc(self):
+        """String representation of the configured function"""
         self._build_data()
         args = []
         for i in self._signature.parameters.values():
@@ -60,13 +64,26 @@ class ConfigFunction():
 
     @property
     def state_desc(self):
+        """Information about the state of the config functions
+
+        State includes (in this order):
+        * S: Whether this config was set
+        * D: Whether this config was declared (might be off if the declaration is not in a module included
+             in a MARA_CONFIG_MODULE)
+        * I: Whether the declared function is passed in to the setfunction
+        * N: Whether the declared function needs to be set
+
+        """
         self._build_data()
         state = (('S' if self.set_func else '-') +
                  ('D' if self.declared_func else '-') +
-                 ('I' if self.include_parent else '-'))
+                 ('I' if self.include_parent else '-') +
+                 ('N' if self.needs_set else '-'))
         return state
 
-    def __repr__(self):
+    @property
+    def value_desc(self):
+        """Representation of the value of the config function"""
         self._build_data()
         if not self.error:
             return pprint.pformat(self.value)
@@ -78,6 +95,9 @@ class ConfigFunction():
                 # expected because of missing arguments, so no error
                 error = ""
             return f"Function '{self.func_desc}'" + error
+
+    def __repr__(self):
+        return self.value_desc
 
 
 class ConfigModule():
@@ -91,13 +111,14 @@ class ConfigModule():
         self.config_functions = {}
 
     def get_or_build_function(self, name):
+        """Creates or returns the already included ConfigFunction for the name"""
         if name in self.config_functions:
             return self.config_functions['name']
         cf = ConfigFunction(name)
         self.config_functions[name] = cf
         return cf
 
-    def items(self):
+    def items(self) -> Iterable[Tuple[str, ConfigFunction]]:
         return sorted(self.config_functions.items())
 
 
@@ -109,12 +130,14 @@ class ConfigForDisplay():
         self._uncontributed = {}
 
     def add_module(self, module: ConfigModule):
+        """Adds a ConfigModule"""
         if module.contributed:
             self._contributed[module.name] = module
         else:
             self._uncontributed[module.name] = module
 
     def get_or_build_module(self, module_name):
+        """Creates or returns the already included ConfigModule for the name"""
         if module_name in self._contributed:
             return self._contributed[module_name]
         if module_name in self._uncontributed:
@@ -124,11 +147,12 @@ class ConfigForDisplay():
         return cm
 
     def get_function(self, key):
+        """Returns the function for key, if it is included in any module"""
         for _, module in self.items():
             if key in module.config_functions:
                 return module.config_functions[key]
 
-    def items(self):
+    def items(self) -> Iterable[Tuple[str, ConfigModule]]:
         return itertools.chain(sorted(self._contributed.items()), sorted(self._uncontributed.items()))
 
 
@@ -146,10 +170,11 @@ def get_config_for_display() -> ConfigForDisplay:
     for module, config_module in get_contributed_functionality('MARA_CONFIG_MODULES'):
         config.add_module(ConfigModule(config_module, contributed=True))
 
-    for key, func in get_declared_config():
+    for key, (func, needs_set) in get_declared_config():
         cm = config.get_or_build_module(func.__module__)
         cf = cm.get_or_build_function(key)
         cf.declared_func = func
+        cf.needs_set = needs_set
     for key, v in get_overwritten_config():
         func, include_parent = v
         cf = config.get_function(key)
@@ -177,4 +202,5 @@ def print_config():
         for conf_name, conf_func in config_module.items():
             print(format_str % (conf_name, conf_func.state_desc, str(conf_func)))
 
-    print('\nS: config is set, D: @declare_config was called, I: config value includes parent\n')
+    print('\nS: config is set, D: @declare_config was called, I: config value includes parent, ' +
+          'N: config value needs to be set\n')

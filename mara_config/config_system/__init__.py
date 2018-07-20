@@ -31,23 +31,29 @@ def _get_full_name(func: Callable) -> str:
     return (func.__module__ or '<no_module>') + '.' + func.__name__
 
 
-def declare_config(config_name=None):
+def declare_config(config_name=None, needs_set=False):
     """Decorator for config or API functions which can be replaced by downstream packages
 
     Args:
         config_name: str, default: None
             name of the config function. If None, the function is registered under
             the name 'modulename.funcname'.
+        needs_set: bool, default: False
+            Whether or not the config needs to be set before it can be used. If True, a unset
+            config will raise NotImplementedError when called.
 
     Returns: The decorated function, which looks up a replacing function in the config system
     """
+    # To not overwrite stuff on the next usage of the decorator...
     outer_config_name = config_name
+    outer_needs_set = needs_set
 
     def _replaceable(func):
         config_name = (outer_config_name if outer_config_name
                        else _get_full_name(func))
+        _needs_set = outer_needs_set
+        __ORIG_API_REGISTRY[config_name] = (func, needs_set)
         log.debug("Registered new replaceable function '%s'", config_name)
-        __ORIG_API_REGISTRY[config_name] = func
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -55,9 +61,11 @@ def declare_config(config_name=None):
                 replacement_func, include_original_function = __CONFIG_REGISTRY[config_name]
                 if include_original_function:
                     kwargs['original_function'] = func
-
                 return replacement_func(*args, **kwargs)
             else:
+                if _needs_set:
+                    raise NotImplementedError(f"Config '{config_name}' needs to be configured before usage.")
+
                 return func(*args, **kwargs)
 
         setattr(wrapper, 'config_name', config_name)
@@ -78,13 +86,14 @@ def set_config(config_name: str, include_original_function=False, function: Call
     >>> def replacement(...):
     >>>     pass
     >>> if should_be_replaced:
-    >>>     set_config('mara_without_function_pointer', replacement)
+    >>>     set_config('mara_without_function_pointer', include_original_function=False, function=replacement)
 
     Args:
         config_name: str
             name of the to be replaced config function
         include_original_function: Boolean, default: False
-            whether or not to pass in the original function to this decorated function
+            whether or not to pass in the original function to this decorated function. If True, the original
+            function will be included in the kwargs with the name 'original_function'
         function: Callable, default: None
             The function which replaces the declared config function (only needed when used as a function,
             do not set when used as decorator)
@@ -220,7 +229,7 @@ def get_overwritten_config() -> Generator[Tuple[str, Tuple[Callable, bool]], Non
         yield k, v
 
 
-def get_declared_config() -> Generator[Tuple[str, Callable], None, None]:
+def get_declared_config() -> Generator[Tuple[str, Tuple[Callable, bool]], None, None]:
     """Get all declared config"""
     for k, v in __ORIG_API_REGISTRY.items():
         yield k, v

@@ -4,6 +4,7 @@ import pytest
 import sys
 from mara_config import declare_config, set_config
 from mara_config.config_system import add_config_from_environment, _reset_config
+from mara_config.config_system.config_display import get_config_for_display
 
 
 # this dance with orig_something and so on is needed so 'something' is actually decorated by the fixture
@@ -142,6 +143,41 @@ def test_replace_function_with_non_function():
     with pytest.raises(AssertionError):
         set_config('mara_config.tests.test_config.something', function="something")
 
+
+def test_needs_set_without_set():
+    @declare_config(needs_set=True)
+    def _tester(argument: str = None) -> str:
+        return "x"
+
+    with pytest.raises(NotImplementedError):
+        _tester()
+
+
+def test_needs_set_with_set():
+    @declare_config(config_name='random__test_needs_set_with_set', needs_set=True)
+    def _tester(argument: str = None) -> str:
+        return "x"
+
+    @set_config('random__test_needs_set_with_set')
+    def _replacement(argument: str = None) -> str:
+        return "y"
+
+    assert _tester() == 'y'
+
+def test_needs_set_with_set_and_include_parent():
+    @declare_config(config_name='random__test_needs_set_with_set_and_include_parent', needs_set=True)
+    def _tester(argument: str = None) -> str:
+        return "x"
+
+    with pytest.raises(NotImplementedError):
+        _tester()
+
+    @set_config('random__test_needs_set_with_set_and_include_parent', include_original_function=True)
+    def _replacement(argument: str = None, original_function=None) -> str:
+        ret = original_function()
+        return "y"+ret
+
+    assert _tester() == 'yx'
 
 def test_warn_on_use_replace_decorator_twice(caplog):
     # In downstream package which want's to overwrite the API
