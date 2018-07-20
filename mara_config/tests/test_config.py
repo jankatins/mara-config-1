@@ -25,12 +25,6 @@ def without_args() -> str:
 orig_without_args = without_args
 
 
-def wraps_test_func():
-    return 'x'
-def patch_test_func():
-    return 'x'
-
-
 @pytest.fixture()
 def setup_config():
     """Setup a clean config and insert a single API"""
@@ -40,11 +34,6 @@ def setup_config():
     global without_args
     something = declare_config()(orig_something)
     without_args = declare_config()(orig_without_args)
-    # global wraps_test_func, patch_test_func
-    # wraps_test_func = lambda: 'x'
-    # wraps_test_func.__name__ = 'wraps_test_func'
-    # patch_test_func = lambda: 'x'
-    # patch_test_func.__name__ = 'patch_test_func'
     yield setup_config
     _reset_config()
 
@@ -86,36 +75,65 @@ def test_replace_decorator_with_include_orig_function():
     assert 'xy' == something()
     assert 'xABC' == something("ABC")
 
-def _get_func(name):
-    return getattr(sys.modules[__name__], name)
+
+# this can only be wrapped once!
+def _to_be_wraped_once():
+    return 'x'
 
 def test_wraps():
 
-    before = _get_func('wraps_test_func')
-    assert 'x' == _get_func('wraps_test_func')()
+    before = _to_be_wraped_once
+    assert 'x' == _to_be_wraped_once()
 
     from mara_config.config_system import wrap
 
-    @wrap(_get_func('wraps_test_func'))
+    @wrap(_to_be_wraped_once)
     def replacement(original_function) -> str:
         str(original_function)
         val = original_function()
         return val + 'y'
-    after = _get_func('wraps_test_func')
+    after = _to_be_wraped_once
     assert before != after
-    assert 'xy' == _get_func('wraps_test_func')()
+    assert 'xy' == _to_be_wraped_once()
+
+    # check that it shows up correctly in the config views
+    config = get_config_for_display()
+    for module_name, config_module in config.items():
+        # print(f'# Module: {module_name}')
+        for conf_name, conf_func in config_module.items():
+            if '_to_be_wraped_once' in conf_name:
+                assert conf_func.include_parent
+                assert not conf_func.needs_set
+                assert conf_func.set_func
+                assert conf_func.declared_func
+
+
+# this can only be patched once!
+def _to_be_patched_once():
+    return 'x'
 
 def test_patch():
 
-    assert 'x' == _get_func('patch_test_func')()
+    assert 'x' == _to_be_patched_once()
 
     from mara_config.config_system import patch
 
-    @patch(_get_func('patch_test_func'))
+    @patch(_to_be_patched_once)
     def replacement() -> str:
         return 'y'
 
-    assert 'y' == _get_func('patch_test_func')()
+    assert 'y' == _to_be_patched_once()
+    # check that it shows up correctly in the config views
+    config = get_config_for_display()
+    for module_name, config_module in config.items():
+        # print(f'# Module: {module_name}')
+        for conf_name, conf_func in config_module.items():
+            if '_to_be_patched_once' in conf_name:
+                assert not conf_func.include_parent
+                assert not conf_func.needs_set
+                assert conf_func.set_func
+                assert conf_func.declared_func
+
 
 def test_replace_decorator_with_function_pointer():
     # In downstream package which want's to overwrite the API
