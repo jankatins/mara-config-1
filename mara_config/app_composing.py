@@ -176,7 +176,7 @@ def call_app_composing_function():
 
 
 def init_mara_config_once():
-    """Helper function to be used in one-off scripts which need the config system available"""
+    """Initializes the config system"""
     if __INITIALIZED:
         return
     from mara_config.config_system import add_config_from_environment, add_config_from_local_setup_py

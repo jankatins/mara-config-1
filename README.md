@@ -119,9 +119,10 @@ def replacement():
 
 ## Contributed MARA_* functionality in this package
 
-* a Flask view to show the current configuration (`MARA_FLASK_BLUEPRINTS`)
-* an ACL ressource to protect access to the config view (`MARA_ACL_RESOURCES`)
-* a navigation entry (`MARA_NAVIGATION_ENTRY_FNS`)
+* Config related click commands (`MARA_CLICK_COMMANDS`) for printing 
+  (`mara config print`) and validating (`mara config validate`) the config state. 
+  `mara config generate_local_setup` generates some rudimentary 
+  `app/local_setup.py` (which needs changes and usually also needs additions)
 * Some default configuration entries (`MARA_CONFIG_MODULES`)
 
 To use, add this funcitonality, add `mara_config.register_functionality(mara_config)`
