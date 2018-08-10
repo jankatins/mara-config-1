@@ -4,6 +4,7 @@ import copy
 import itertools
 import logging
 import sys
+import traceback
 import types
 import typing
 import os
@@ -96,29 +97,31 @@ def ensure_app_module():
 
     def try_import_at(path):
         if not os.path.exists(path):
-            return None
+            return (None, None)
         inserted = False
         if sys.path[0] != path:
             sys.path.insert(0, path)
             inserted = True
         try:
             app = importlib.import_module(app_module_name)
-            return app
-        except ModuleNotFoundError:
+            return (app, None)
+        except ModuleNotFoundError as ex:
             if inserted:
                 del sys.path[0]
-            return None
+            return (None, traceback.format_exc(-1))
 
     mara_app_root_env = os.environ.get('MARA_APP_ROOT', None)
     if mara_app_root_env:
         mara_app_root_env = os.path.abspath(mara_app_root_env)
         log.debug("MARA_APP_ROOT specifed (%s), using only that for finding MARA_APP", mara_app_root_env)
-        app = try_import_at(mara_app_root_env)
+        (app, exc_msg) = try_import_at(mara_app_root_env)
         if app:
             log.debug("Found MARA_APP in MARA_APP_ROOT")
             return app
         else:
             msg = f"MARA_APP ({app_module_name}) is not an importable from MARA_APP_ROOT ({mara_app_root_env})."
+            if exc_msg is not None:
+                msg += f'\n' + exc_msg
             raise RuntimeError(msg)
 
     for name, path in [('script path', os.path.dirname(sys.argv[0])),
@@ -133,10 +136,13 @@ def ensure_app_module():
                 # No idea why...
                 pass
             else:
-                app = try_import_at(path)
+                (app, exc_msg) = try_import_at(path)
                 if app:
                     log.debug("Found MARA_APP in %s", path)
                     return app
+                else:
+                    if exc_msg is not None:
+                        log.debug("Tried to import MARA_APP in %s, got inner exception at:\n%s", path, exc_msg)
 
             path, name = os.path.split(path)
             if not name:
