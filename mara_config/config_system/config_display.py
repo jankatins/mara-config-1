@@ -136,6 +136,56 @@ class ConfigFunction():
         else:
             return self.error
 
+
+    @property
+    def value_dict(self, max_depth=3):
+        """Representation of the value of the config function, as a dict"""
+        import datetime, pathlib
+        def serialize_obj(obj, max_depth, depth=1, processed_objects = set()):
+            # make sure that we actually have a stack and not a single object
+            proc_obj = set(processed_objects)
+            # don't serialize scalars
+            if isinstance(obj, (str, int, float, type(None))):
+                return obj
+            # Convert to string simple classes
+            if type(obj).__name__ in ('datetime.datetime', 'datetime.date', 'pathlib.PosixPath'):
+                return str(obj)
+            # Try to use python3.7 asdict functionality if available
+            if hasattr(obj, 'asdict'):
+                return obj.asdict()
+
+            # Transform, if possible, the object into a dict for further processing
+            if hasattr(obj, '__dict__'):
+                obj = obj.__dict__
+            
+            # Prevent circular references. Identify an object by its id or its representation.
+            # Literal dicts all have the same id so we can't use just the id
+            already_processed = False
+            obj_id = str(id(obj)) + repr(obj)
+            if obj_id in proc_obj:
+                already_processed = True
+            proc_obj.add(obj_id)
+
+            # Go inside the dict to serialize any leaves that won't pass json serialization
+            if isinstance(obj, (dict)) and depth <= max_depth and not already_processed:
+                res = {}
+                for k,v in obj.items():
+                    res[k] = serialize_obj(v, max_depth, depth + 1, proc_obj)
+                return res
+            if isinstance(obj, (list)) and depth <= max_depth and not already_processed:
+                return list(serialize_obj(v, max_depth, depth + 1, proc_obj) for v in obj)
+
+            # otherwise just repr it. This is for circular references, large depth,
+            # and other types that would be represented well as string, easy to parse, etc.
+            return repr(obj)
+
+        self._build_data()
+        if not self.error:
+            return serialize_obj(self.value, max_depth)
+        else:
+            raise Exception(self.error)
+
+
     def __repr__(self):
         return f"<function {self.func_desc}>"
 
@@ -195,6 +245,13 @@ class ConfigForDisplay():
     def items(self) -> Iterable[Tuple[str, ConfigModule]]:
         return itertools.chain(sorted(self._contributed.items()), sorted(self._uncontributed.items()))
 
+    def asdict(self):
+        result = {}
+        for module_name, config_module in self.items():
+            for conf_name, conf_func in config_module.items():
+                result[conf_name] = conf_func.value_dict
+        return result
+
 
 def get_config_for_display() -> ConfigForDisplay:
     """Returns the whole known config
@@ -244,6 +301,12 @@ def print_config():
 
     print('\nS: config is set, D: @declare_config was called, I: config value includes parent, ' +
           'N: config value needs to be set\n')
+
+
+def export_config():
+    import json
+    config = get_config_for_display()
+    print(json.dumps(config.asdict(), indent=4))
 
 
 def validate_config()  -> List[str]:

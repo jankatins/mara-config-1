@@ -14,6 +14,13 @@ def print():
 
 
 @mara_config.command()
+def export_json():
+    """Exports the current config as JSON"""
+    from mara_config.config_system.config_display import export_config
+    export_config()
+
+
+@mara_config.command()
 def generate_local_setup():
     """Generates a basic setup_local.py which can be adjusted.
 
